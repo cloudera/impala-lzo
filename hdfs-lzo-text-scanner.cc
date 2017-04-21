@@ -530,6 +530,12 @@ Status HdfsLzoTextScanner::ReadAndDecompressData(MemPool* pool) {
     eos_read_ = true;
     return Status::OK();
   }
+  if (uncompressed_len < 0) {
+    stringstream ss;
+    ss << "Corrupt lzo file. Invalid uncompressed length: " << uncompressed_len
+       << " in file: " << stream_->filename();
+    return Status(ss.str());
+  }
 
   // Read the compressed len
   RETURN_IF_FALSE(stream_->ReadInt(&compressed_len, &status));
@@ -606,10 +612,19 @@ Status HdfsLzoTextScanner::ReadAndDecompressData(MemPool* pool) {
   block_buffer_ptr_ = block_buffer_;
   bytes_remaining_ = uncompressed_len;
 
+  // IMPALA-5172: lzo_uint is a 64-bit datatype. &uncompressed_len cannot be cast to
+  // an lzo_uint*, as it points to a 32-bit integer. Use a temporary 64-bit variable to
+  // interact with lzo1x_decompress_safe(). Since the variable won't be set to a value
+  // greater than what was passed in, it can safely be assigned to a 32 bit integer
+  // afterward.
+  uint64_t uncompressed_len_64bit = static_cast<uint64_t>(uncompressed_len);
+
   // Decompress the data.  lzop always uses lzo1x.
   SCOPED_TIMER(decompress_timer_);
   int ret = lzo1x_decompress_safe(compressed_data, compressed_len,
-      block_buffer_, reinterpret_cast<lzo_uint*>(&uncompressed_len), nullptr);
+      block_buffer_, &uncompressed_len_64bit, nullptr);
+  DCHECK_LE(uncompressed_len_64bit, uncompressed_len);
+  uncompressed_len = static_cast<int32_t>(uncompressed_len_64bit);
 
   if (ret != LZO_E_OK || bytes_remaining_ != uncompressed_len) {
     // Avoid accumulating memory with repeated decompression failures.
@@ -617,7 +632,7 @@ Status HdfsLzoTextScanner::ReadAndDecompressData(MemPool* pool) {
     stringstream ss;
     ss << "Lzo decompression failed on file: " << stream_->filename()
        << " at offset: " << stream_->file_offset() << " returned: " << ret
-       << " output size: " << compressed_len << "expected: " << block_buffer_len_;
+       << " output size: " << uncompressed_len << " expected: " << block_buffer_len_;
     return Status(ss.str());
   }
 
