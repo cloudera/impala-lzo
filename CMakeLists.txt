@@ -85,7 +85,7 @@ include_directories(${GFLAGS_INCLUDE_DIR})
 
 include_directories($ENV{IMPALA_HOME}/be/src/thirdparty) # Needed for squeasel
 include_directories($ENV{HADOOP_INCLUDE_DIR})
-include_directories(${BOOST_INCLUDEDIR})
+include_directories(SYSTEM ${BOOST_INCLUDEDIR})
 
 message(STATUS "LZO_LIB: ${LZO_LIB}")
 

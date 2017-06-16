@@ -190,11 +190,11 @@ Status HdfsLzoTextScanner::IssueFileRanges(const char* filename) {
     // Add the 0-offset range and indicate that the file has no remaining ranges by
     // passing num_files_queued = 1.
     if (zero_offset_range != nullptr) {
-      scan_node_->AddDiskIoRanges(
-        vector<DiskIoMgr::ScanRange*>(1, zero_offset_range), 1);
+      RETURN_IF_ERROR(scan_node_->AddDiskIoRanges(
+        vector<DiskIoMgr::ScanRange*>(1, zero_offset_range), 1));
     }
   } else {
-    scan_node_->AddDiskIoRanges(file_desc);
+    RETURN_IF_ERROR(scan_node_->AddDiskIoRanges(file_desc));
   }
   return Status::OK();
 }
@@ -313,7 +313,7 @@ Status HdfsLzoTextScanner::ReadData(MemPool* pool) {
   } while (!stream_->eosr());
 
   // Reset the scanner state.
-  HdfsTextScanner::ResetScanner();
+  RETURN_IF_ERROR(HdfsTextScanner::ResetScanner());
   return Status::OK();
 }
 
