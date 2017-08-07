@@ -87,7 +87,8 @@ Status HdfsLzoTextScanner::Open(ScannerContext* context) {
   RETURN_IF_ERROR(HdfsTextScanner::Open(context));
   stream_->set_read_past_size_cb(&HdfsLzoTextScanner::MaxBlockCompressedSize);
   header_ = reinterpret_cast<LzoFileHeader*>(
-      static_cast<HdfsScanNodeBase*>(scan_node_)->GetFileMetadata(stream_->filename()));
+      static_cast<HdfsScanNodeBase*>(scan_node_)->GetFileMetadata(
+          context->partition_descriptor()->id(), stream_->filename()));
   if (header_ == nullptr) {
     only_parsing_header_ = true;
     return Status::OK();
@@ -128,7 +129,7 @@ Status HdfsLzoTextScanner::GetNextInternal(RowBatch* row_batch) {
     RETURN_IF_ERROR(ReadIndexFile());
     // Header is parsed, set the metadata in the scan node.
     static_cast<HdfsScanNodeBase*>(scan_node_)->SetFileMetadata(
-        stream_->filename(), header_);
+        context_->partition_descriptor()->id(), stream_->filename(), header_);
     RETURN_IF_ERROR(IssueFileRanges(stream_->filename()));
     eos_ = true;
   } else {
@@ -164,7 +165,8 @@ Status HdfsLzoTextScanner::LzoIssueInitialRangesImpl(HdfsScanNodeBase* scan_node
 
 Status HdfsLzoTextScanner::IssueFileRanges(const char* filename) {
   DCHECK(header_ != nullptr);
-  HdfsFileDesc* file_desc = scan_node_->GetFileDesc(filename);
+  HdfsFileDesc* file_desc = scan_node_->GetFileDesc(
+      context_->partition_descriptor()->id(), filename);
   if (header_->offsets.empty()) {
     // If offsets is empty then there was no index file.  The file cannot be split.
     // If this contains the range starting at offset 0 generate a scan for whole file.
