@@ -586,8 +586,7 @@ Status HdfsLzoTextScanner::ReadAndDecompressData(MemPool* pool) {
        << stream_->filename();
     return Status(ss.str());
   }
-  // Safe to do because stream_ does not hold tuple data.
-  context_->ReleaseCompletedResources(nullptr, false);
+  context_->ReleaseCompletedResources(false);
   eos_read_ = stream_->eosr();
 
   // Checksum the data.
