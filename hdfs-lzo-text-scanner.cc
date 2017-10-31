@@ -74,9 +74,6 @@ namespace impala {
 HdfsLzoTextScanner::HdfsLzoTextScanner(HdfsScanNodeBase* scan_node, RuntimeState* state)
     : HdfsTextScanner(scan_node, state),
       block_buffer_pool_(new MemPool(scan_node->mem_tracker())),
-      block_buffer_len_(0),
-      bytes_remaining_(0),
-      eos_read_(false),
       disable_checksum_(FLAGS_disable_lzo_checksums) {
 }
 
@@ -352,12 +349,12 @@ Status HdfsLzoTextScanner::FillByteBuffer(MemPool* pool, bool* eosr, int num_byt
       }
     } else {
       byte_buffer_ptr_ = reinterpret_cast<char*>(block_buffer_ptr_);
-      byte_buffer_read_size_ = num_bytes;
+      byte_buffer_read_size_ = bytes_remaining_;
     }
     // We assume a block is larger than the largest request.
     if (!eos_read_ && num_bytes > bytes_remaining_) {
       // Text only reads everything or 1024 so we do not need to handle this case.
-      DCHECK_LE(num_bytes, bytes_remaining_);
+      DCHECK(false) << "Unexpected read size: " << num_bytes << " " << bytes_remaining_;
       return Status("Unexpected read size in LZO decompressor");
     }
   }
@@ -602,18 +599,30 @@ Status HdfsLzoTextScanner::ReadAndDecompressData(MemPool* pool) {
   RETURN_IF_ERROR(Checksum(header_->input_checksum_type_,
       "compressed", in_checksum, compressed_data, compressed_len));
 
+  // Attach any data that previously returned string slots may reference.
+  bool has_string_slots = !scan_node_->tuple_desc()->string_slots().empty();
+  if (has_string_slots) {
+    pool->AcquireData(block_buffer_pool_.get(), false);
+    block_buffer_len_ = 0;
+    block_buffer_ = block_buffer_ptr_ = nullptr;
+  }
+
   // If the compressed length is the same as the uncompressed length, it means the data
-  // was not compressed and we are done.
+  // was not compressed. If there are string slots, we need to copy the data out so it can
+  // be returned.
   if (compressed_len == uncompressed_len) {
-    block_buffer_ptr_ = compressed_data;
+    if (has_string_slots) {
+      DCHECK_EQ(0, block_buffer_len_);
+      block_buffer_ptr_ = block_buffer_ = block_buffer_pool_->Allocate(uncompressed_len);
+      block_buffer_len_ = uncompressed_len;
+      memcpy(block_buffer_ptr_, compressed_data, uncompressed_len);
+    } else {
+      block_buffer_ptr_ = compressed_data;
+    }
     bytes_remaining_ = uncompressed_len;
     return Status::OK();
   }
 
-  if (!scan_node_->tuple_desc()->string_slots().empty()) {
-    pool->AcquireData(block_buffer_pool_.get(), false);
-    block_buffer_len_ = 0;
-  }
 
   if (uncompressed_len > block_buffer_len_) {
     block_buffer_ = block_buffer_pool_->Allocate(uncompressed_len);

@@ -190,19 +190,19 @@ class HdfsLzoTextScanner : public HdfsTextScanner {
   boost::scoped_ptr<MemPool> block_buffer_pool_;
 
   // Buffer to hold decompressed data.
-  uint8_t* block_buffer_;
+  uint8_t* block_buffer_ = nullptr;
 
   // Allocated length of the block_buffer_
-  int32_t block_buffer_len_;
+  int32_t block_buffer_len_ = 0;
 
   // Next byte to be returned from the buffer holding decompressed data blocks.
-  uint8_t* block_buffer_ptr_;
+  uint8_t* block_buffer_ptr_ = nullptr;
 
   // Bytes remaining in the block_buffer.
-  int bytes_remaining_;
+  int bytes_remaining_ = 0;
 
   // True if the end of scan has been read.
-  bool eos_read_;
+  bool eos_read_ = false;
 
   // This is set when the scanner object is constructed.  Currently always true.
   // HDFS checksums the blocks from the disk to the client, so this is redundent.
