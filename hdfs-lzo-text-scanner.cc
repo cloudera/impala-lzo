@@ -293,7 +293,7 @@ Status HdfsLzoTextScanner::FindFirstBlock(bool* found) {
   VLOG_ROW << "First Block: " << stream_->filename()
            << " for " << offset << " @" << *pos;
   Status status;
-  stream_->SkipBytes(*pos - offset, &status);
+  if (!stream_->SkipBytes(*pos - offset, &status)) return status;
   *found = true;
   return status;
 }
@@ -380,7 +380,7 @@ Status HdfsLzoTextScanner::Checksum(LzoChecksum type, const string& source,
   if (disable_checksum_) return Status::OK();
 
   // Do the checksum if requested.
-  int32_t calculated_checksum;
+  int32_t calculated_checksum = 0;
   switch (type) {
     case CHECK_NONE:
       return Status::OK();
@@ -509,8 +509,7 @@ Status HdfsLzoTextScanner::ReadHeader() {
   if (flags & F_H_EXTRA_FIELD) {
     int32_t len;
     Status extra_status;
-    stream_->ReadInt(&len, &extra_status);
-    RETURN_IF_ERROR(extra_status);
+    if (!stream_->ReadInt(&len, &extra_status)) return extra_status;
     // Add the size of the len and the checksum and the len to the total h_ptr size.
     h_ptr += (2 * sizeof(int32_t)) + len;
   }

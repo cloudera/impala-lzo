@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 2.6)
 
 set(CMAKE_MODULE_PATH cmake_modules $ENV{IMPALA_HOME}/cmake_modules)
-SET(CXX_COMMON_FLAGS "-Wall -Wno-sign-compare -pthread")
+SET(CXX_COMMON_FLAGS "-Wall -Wno-sign-compare -Werror -pthread")
 # Suppress unused local typedef warnings on gcc and clang
 SET(CXX_COMMON_FLAGS "${CXX_COMMON_FLAGS} -Wno-unused-local-typedefs")
 SET(CXX_COMMON_FLAGS "${CXX_COMMON_FLAGS} -Wno-unused-local-typedef")
