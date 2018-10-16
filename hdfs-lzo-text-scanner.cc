@@ -601,7 +601,11 @@ Status HdfsLzoTextScanner::ReadAndDecompressData(MemPool* pool) {
   // Attach any data that previously returned string slots may reference.
   bool has_string_slots = !scan_node_->tuple_desc()->string_slots().empty();
   if (has_string_slots) {
-    pool->AcquireData(block_buffer_pool_.get(), false);
+    if (pool != nullptr) {
+      pool->AcquireData(block_buffer_pool_.get(), false);
+    } else {
+      block_buffer_pool_->FreeAll();
+    }
     block_buffer_len_ = 0;
     block_buffer_ = block_buffer_ptr_ = nullptr;
   }

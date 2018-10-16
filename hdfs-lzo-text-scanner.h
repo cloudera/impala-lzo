@@ -149,6 +149,8 @@ class HdfsLzoTextScanner : public HdfsTextScanner {
   LzoFileHeader* header_;
 
   // Fills the byte buffer by reading and decompressing blocks.
+  // Attaches decompression buffers from previous calls that might still be referenced
+  // by returned batches to 'pool'. If 'pool' is nullptr the buffers are freed instead.
   virtual Status FillByteBuffer(MemPool* pool, bool* eosr, int num_bytes = 0);
 
   // Read header data and validate header.
@@ -173,12 +175,12 @@ class HdfsLzoTextScanner : public HdfsTextScanner {
   // Data will be in a mempool allocated buffer or in the disk I/O context memory
   // if the data was not compressed.
   // Attaches decompression buffers from previous calls that might still be referenced
-  // by returned batches to 'pool'.
+  // by returned batches to 'pool'. If 'pool' is nullptr the buffers are freed instead.
   Status ReadAndDecompressData(MemPool* pool);
 
   // Read compress data and recover from errosr.
   // Attaches decompression buffers from previous calls that might still be referenced
-  // by returned batches to 'pool'.
+  // by returned batches to 'pool'. If 'pool' is nullptr the buffers are freed instead.
   Status ReadData(MemPool* pool);
 
   // Callback for stream_ to determine how much to read past the scan range.
