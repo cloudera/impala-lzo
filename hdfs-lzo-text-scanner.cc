@@ -137,6 +137,7 @@ Status HdfsLzoTextScanner::GetNextInternal(RowBatch* row_batch) {
     static_cast<HdfsScanNodeBase*>(scan_node_)->SetFileMetadata(
         context_->partition_descriptor()->id(), stream_->filename(), header_);
     RETURN_IF_ERROR(IssueFileRanges(stream_->filename()));
+    scan_node_->UpdateRemainingScanRangeSubmissions(-1);
     eos_ = true;
   } else {
     DCHECK(header_ != nullptr);
@@ -163,9 +164,9 @@ Status HdfsLzoTextScanner::LzoIssueInitialRangesImpl(HdfsScanNodeBase* scan_node
         -1, false, false, files[i]->mtime);
     header_ranges.push_back(header_range);
   }
-  // The files' ranges will be submitted once the header range completes, in
-  // IssueFileRanges().  So pass 0 to indicate that no file has been added completely.
-  RETURN_IF_ERROR(scan_node->AddDiskIoRanges(header_ranges, 0));
+  // The files' ranges will be submitted once the header range completes.
+  scan_node->UpdateRemainingScanRangeSubmissions(header_ranges.size());
+  RETURN_IF_ERROR(scan_node->AddDiskIoRanges(header_ranges));
   return Status::OK();
 }
 
@@ -193,11 +194,10 @@ Status HdfsLzoTextScanner::IssueFileRanges(const char* filename) {
           file_desc->fs, filename, file_desc->file_length, 0, metadata->partition_id,
           -1, false, false, file_desc->mtime);
     }
-    // Add the 0-offset range and indicate that the file has no remaining ranges by
-    // passing num_files_queued = 1.
+    // Add the 0-offset range.
     if (zero_offset_range != nullptr) {
       RETURN_IF_ERROR(scan_node_->AddDiskIoRanges(
-        vector<ScanRange*>(1, zero_offset_range), 1));
+        vector<ScanRange*>(1, zero_offset_range)));
     }
   } else {
     RETURN_IF_ERROR(scan_node_->AddDiskIoRanges(file_desc));
