@@ -42,6 +42,7 @@ set_dep_root(GLOG)
 set_dep_root(PROTOBUF)
 set_dep_root(RAPIDJSON)
 set_dep_root(THRIFT)
+set_dep_root(GTEST)
 
 # find boost headers and libs
 IF (DEFINED ENV{BOOST_ROOT})
@@ -90,6 +91,10 @@ include_directories(${PROTOBUF_INCLUDE_DIR})
 include_directories($ENV{IMPALA_HOME}/be/src/thirdparty) # Needed for squeasel
 include_directories($ENV{HADOOP_INCLUDE_DIR})
 include_directories(SYSTEM ${BOOST_INCLUDEDIR})
+
+# Locate and include the gtest headers
+find_package(GTest REQUIRED)
+include_directories(${GTEST_INCLUDE_DIR})
 
 message(STATUS "LZO_LIB: ${LZO_LIB}")
 
