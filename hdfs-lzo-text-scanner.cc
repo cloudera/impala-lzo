@@ -159,9 +159,12 @@ Status HdfsLzoTextScanner::LzoIssueInitialRangesImpl(HdfsScanNodeBase* scan_node
     ScanRangeMetadata* metadata =
         reinterpret_cast<ScanRangeMetadata*>(files[i]->splits[0]->meta_data());
     int64_t header_size = min(static_cast<int64_t>(HEADER_SIZE), files[i]->file_length);
+    bool expected_local = false;
+    int cache_options = !scan_node->IsDataCacheDisabled() ? BufferOpts::USE_DATA_CACHE :
+        BufferOpts::NO_CACHING;
     ScanRange* header_range = scan_node->AllocateScanRange(
         files[i]->fs, files[i]->filename.c_str(), header_size, 0, metadata->partition_id,
-        -1, false, false, files[i]->mtime);
+        -1, cache_options, expected_local, files[i]->mtime);
     header_ranges.push_back(header_range);
   }
   // The files' ranges will be submitted once the header range completes.
@@ -190,9 +193,10 @@ Status HdfsLzoTextScanner::IssueFileRanges(const char* filename) {
       DCHECK(zero_offset_range == nullptr);
       ScanRangeMetadata* metadata =
           reinterpret_cast<ScanRangeMetadata*>(file_desc->splits[0]->meta_data());
+      bool expected_local = false;
       zero_offset_range = scan_node_->AllocateScanRange(
           file_desc->fs, filename, file_desc->file_length, 0, metadata->partition_id,
-          -1, false, false, file_desc->mtime);
+          -1, BufferOpts::NO_CACHING, expected_local, file_desc->mtime);
     }
     // Add the 0-offset range.
     if (zero_offset_range != nullptr) {
