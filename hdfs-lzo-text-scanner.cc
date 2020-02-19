@@ -558,7 +558,7 @@ Status HdfsLzoTextScanner::ReadAndDecompressData(MemPool* pool) {
     return Status(ss.str());
   }
 
-  int out_checksum;
+  int out_checksum = 0;
   // The checksum of the uncompressed data.
   if (header_->output_checksum_type_ != CHECK_NONE) {
     RETURN_IF_FALSE(stream_->ReadInt(&out_checksum, &status));
