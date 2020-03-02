@@ -556,6 +556,10 @@ Status HdfsLzoTextScanner::ReadAndDecompressData(MemPool* pool) {
     ss << "Blocksize: " << compressed_len << " is greater than LZO_MAX_BLOCK_SIZE: "
        << LZO_MAX_BLOCK_SIZE;
     return Status(ss.str());
+  } else if (compressed_len <= 0) {
+    stringstream ss;
+    ss << "Blocksize: " << compressed_len << " must be positive";
+    return Status(ss.str());
   }
 
   int out_checksum = 0;
